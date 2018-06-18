@@ -1,9 +1,9 @@
+#include "BinaryValue.h"
 #include <iostream>
 
-using namespace std;
+int main() {
+  systelab::db::sqlite::BinaryValue binary_value(1);
 
-int main()
-{
-    cout << "Hello World!" << endl;
-    return 0;
+  std::cout << "Hello World! Just created an unary BinaryValue" << std::endl;
+  return 0;
 }
