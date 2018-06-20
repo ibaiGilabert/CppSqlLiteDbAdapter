@@ -3,5 +3,4 @@
 CMakeLists.txt.user
 .vimrc.swp
 tags
-build*
 .gdb.*
