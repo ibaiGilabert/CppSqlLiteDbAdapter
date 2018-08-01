@@ -38,10 +38,12 @@ macro(setup_boost)
 
                 # Compile ${BOOST_COMPONENTS}
                 # https://www.boost.org/doc/libs/1_67_0/more/getting_started/windows.html#or-build-binaries-from-source
+                message(STATUS "COMMAND ${BOOTSTRAP_COMMAND} WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result")
                 execute_process(COMMAND ${BOOTSTRAP_COMMAND} WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result)
                 if(result)
                     message(FATAL_ERROR "CMake step for boost failed: ${result}")
                 endif()
+                message(STATUS "COMMAND ${B2_COMMAND} ${B2_ARGS} WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result")
                 execute_process(COMMAND ${B2_COMMAND} ${B2_ARGS} WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result)
                 if(result)
                     message(FATAL_ERROR "CMake step for boost failed: ${result}")
@@ -67,14 +69,16 @@ macro(setup_boost)
         elseif(UNIX)
             # Compile ${BOOST_COMPONENTS}
             # https://www.boost.org/doc/libs/1_67_0/more/getting_started/unix-variants.html#or-build-custom-binaries
-            execute_process(COMMAND bash -c "${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET)
+            message(STATUS "COMMAND bash -c \"${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}\" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET")
+            execute_process(COMMAND bash -c "${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET) # OUTPUT_QUIET to avoid all the 'copy' messages
             if(result)
                 message(FATAL_ERROR "CMake step for boost failed: ${result}")
             endif()
-            execute_process(COMMAND bash -c "${BOOST_LIB_DIR}/b2 install" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET)
-            if(result)
-                message(FATAL_ERROR "Cmake step for boost failed: ${result}")
-            endif()
+            message(STATUS "COMMAND bash -c \"${BOOST_LIB_DIR}/b2 install\" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET")   # OUTPUT_QUIET to avoid all the 'copy' messages
+            execute_process(COMMAND bash -c "${BOOST_LIB_DIR}/b2 install" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET)   # OUTPUT_QUIET to avoid all the 'copy' messages
+            # if(result)
+            #     message(FATAL_ERROR "Cmake step for boost failed: ${result}")
+            # endif()
 
             # re-find package to set the Boost_* variables
             find_package(Boost 1.67.0 COMPONENTS ${BOOST_COMPONENTS})
@@ -136,7 +140,6 @@ macro(setup_my_google_test)
 
     include_directories(${GOOGLE_TEST_LIB_DIR}/googletest/include)    # -I compilation command
     include_directories(${GOOGLE_TEST_LIB_DIR}/googlemock/include)    # -I compilation command
-
 endmacro()
 
 macro(setup_google_test)
@@ -175,7 +178,7 @@ macro(setup_google_test2)
 
     # Add googletest directly to our build. This defines
     # the gtest and gtest_main targets.
-    add_subdirectory("${CMAKE_SOURCE_DIR}/include/googletest"
+    add_subdirectory("${CMAKE_SOURCE_DIR}/include/googletest-release-1.8.0"
                      EXCLUDE_FROM_ALL)
 endmacro()
 
