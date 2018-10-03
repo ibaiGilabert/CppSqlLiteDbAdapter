@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.2)
 
 macro(include_boost)
-    message(status "** Boost Include: ${Boost_INCLUDE_DIR}")
-    message(status "** Boost Library dir: ${Boost_LIBRARY_DIRS}")
-    message(status "** Boost Libraries: ${Boost_LIBRARIES}")
+    message(STATUS "*** Boost Include: ${Boost_INCLUDE_DIR}")
+    message(STATUS "*** Boost Library: ${Boost_LIBRARY_DIRS}")
+    message(STATUS "*** Boost Libraries: ${Boost_LIBRARIES}")
 
     # Include 'boost' directory
     include_directories(${Boost_INCLUDE_DIR})
@@ -28,8 +28,10 @@ macro(setup_boost)
     if(Boost_FOUND)
         include_boost()
     else()
-        message(status "** Boost couldn't be found. Don't worry, let's compile it ; )")
-
+        message(STATUS "\n
+                        *******************************************************************************
+                        *** DISCLAIMER:  Boost couldn't be found. Don't worry, let's compile it ; ) ***
+                        ********************************************************************************\n")
         if (WIN32)
             if (NOT EXISTS ${BOOST_INCLUDEDIR} OR NOT EXISTS ${BOOST_LIBRARYDIR})
                 set(BOOTSTRAP_COMMAND "${BOOST_LIB_DIR}/bootstrap.bat")
@@ -69,10 +71,10 @@ macro(setup_boost)
         elseif(UNIX)
             # Compile ${BOOST_COMPONENTS}
             # https://www.boost.org/doc/libs/1_67_0/more/getting_started/unix-variants.html#or-build-custom-binaries
-            message(STATUS "COMMAND bash -c \"${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}\" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET")
+            message(STATUS "**** COMMAND bash -c \"${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}\" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET ****")
             execute_process(COMMAND bash -c "${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET) # OUTPUT_QUIET to avoid all the 'copy' messages
             if(result)
-                message(FATAL_ERROR "CMake step for boost failed: ${result}")
+                message(FATAL_ERROR "CMake step for boost failed: |${result}|")
             endif()
             message(STATUS "COMMAND bash -c \"${BOOST_LIB_DIR}/b2 install\" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET")   # OUTPUT_QUIET to avoid all the 'copy' messages
             execute_process(COMMAND bash -c "${BOOST_LIB_DIR}/b2 install" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET)   # OUTPUT_QUIET to avoid all the 'copy' messages
@@ -83,7 +85,7 @@ macro(setup_boost)
             # re-find package to set the Boost_* variables
             find_package(Boost 1.67.0 COMPONENTS ${BOOST_COMPONENTS})
             if(NOT Boost_FOUND)
-                message(FATAL_ERROR "Something went wrong, couldn't find boost after compile it.")
+                message(WARNING "Something went wrong, couldn't find boost after compile it.")
             endif()
 
         else()
@@ -183,15 +185,56 @@ macro(setup_google_test2)
 endmacro()
 
 
+macro(configure_google_test)
+    # see https://github.com/google/googletest/blob/master/googletest/README.md
+    # Download and unpack googletest at configurecd time
+    configure_file(GoogleTest.in googletest-download/CMakeLists.txt)
+    message(STATUS "*** GOOGLE_TEST COMMAND ${CMAKE_COMMAND} -G \"${CMAKE_GENERATOR}\" .
+                    RESULT_VARIABLE result
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download")
+    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+                    RESULT_VARIABLE result
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)
+    if(result)
+      message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+    endif()
+    execute_process(COMMAND ${CMAKE_COMMAND} --build .
+                    RESULT_VARIABLE result
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)
+    if(result)
+      message(FATAL_ERROR "Build step for googletest failed: ${result}")
+    endif()
+
+    # Prevent overriding the parent project's compiler/linker
+    # settings on Windows
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+    # Add googletest directly to our build. This defines
+    # the gtest and gtest_main targets.
+    add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
+                     ${CMAKE_BINARY_DIR}/googletest-build
+                     EXCLUDE_FROM_ALL)
+
+    # The gtest/gtest_main targets carry header search path
+    # dependencies automatically when using CMake 2.8.11 or
+    # later. Otherwise we have to add them here ourselves.
+    if (CMAKE_VERSION VERSION_LESS 2.8.11)
+    include_directories("${gtest_SOURCE_DIR}/include")
+    endif()
+endmacro()
+
 
 # Configure project
 project(CppSqlLiteDbAdapter)
+
+# setup google_test (before set bin dir)
+configure_google_test()
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_PDB_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # target
 set(PROJECT_SQLITE_ADAPTER cpp-sqlite-db-adapter)
@@ -206,7 +249,8 @@ setup_sqlite()
 # Setup google test
 #setup_my_google_test()
 #setup_google_test()
-setup_google_test2()
+#setup_google_test2()
+
 
 # Include interface
 include_directories(${CMAKE_SOURCE_DIR}/interface)    # -I compilation command

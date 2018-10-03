@@ -14,7 +14,7 @@ You can build the project from source directly from command line following these
 
 	$mkdir build  
 	$cd build  
-	$cmake ../src/ACCM  
+	$cmake ..
 
 Windows:  
 
