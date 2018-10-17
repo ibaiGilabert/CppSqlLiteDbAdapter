@@ -32,7 +32,19 @@ macro(setup_boost)
                         *******************************************************************************
                         *** DISCLAIMER:  Boost couldn't be found. Don't worry, let's compile it ; ) ***
                         ********************************************************************************\n")
+
+        set(BOOST_COMPRESSED "boost_1_67_0.7z")
+        set(ACCM_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
         if (WIN32)
+            # Extract Boost
+            message(STATUS "*** WINDOWS detected.")
+            set(7Z_BINARY_FILE "${CMAKE_SOURCE_DIR}/include/Win32/7z/7za.exe")
+            message(STATUS "*** COMMAND bash -c '${7Z_BINARY_FILE} x ${BOOST_COMPRESSED}' WORKING_DIRECTORY ${ACCM_INCLUDE_DIR} RESULT_VARIABLE result")
+            execute_process(COMMAND bash -c "${7Z_BINARY_FILE} x ${BOOST_COMPRESSED}" WORKING_DIRECTORY ${ACCM_INCLUDE_DIR} RESULT_VARIABLE result)
+            if(result)
+                message(FATAL_ERROR "Extracting Boost: ${result}")
+            endif()
+
             if (NOT EXISTS ${BOOST_INCLUDEDIR} OR NOT EXISTS ${BOOST_LIBRARYDIR})
                 set(BOOTSTRAP_COMMAND "${BOOST_LIB_DIR}/bootstrap.bat")
                 set(B2_COMMAND "${BOOST_LIB_DIR}/b2.exe")
@@ -69,6 +81,24 @@ macro(setup_boost)
             endforeach(lib_boost)
 
         elseif(UNIX)
+            # extract Boost
+            message(STATUS "*** LINUX detected.")
+
+            # compile 7za
+            set(7Z_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/include/POSIX/build_7za.sh")
+            message(STATUS "*** COMMAND '${7Z_SCRIPT_FILE} WORKING_DIRECTORY '${ACCM_INCLUDE_DIR}/POSIX' RESULT_VARIABLE result")
+            execute_process(COMMAND ${7Z_SCRIPT_FILE} WORKING_DIRECTORY "${ACCM_INCLUDE_DIR}/POSIX" RESULT_VARIABLE result)
+            if(result)
+              message(FATAL_ERROR "Building 7za: ${result}")
+            endif()
+
+            set(7Z_BINARY_FILE "${CMAKE_SOURCE_DIR}/include/POSIX/p7zip/bin/7za")
+            message(STATUS "*** COMMAND bash -c '${7Z_BINARY_FILE} x ${BOOST_COMPRESSED}' WORKING_DIRECTORY ${ACCM_INCLUDE_DIR} RESULT_VARIABLE result")
+            execute_process(COMMAND bash -c "${7Z_BINARY_FILE} x ${BOOST_COMPRESSED}" WORKING_DIRECTORY ${ACCM_INCLUDE_DIR} RESULT_VARIABLE result)
+            if(result)
+              message(FATAL_ERROR "Extracting Boost: ${result}")
+            endif()
+
             # Compile ${BOOST_COMPONENTS}
             # https://www.boost.org/doc/libs/1_67_0/more/getting_started/unix-variants.html#or-build-custom-binaries
             message(STATUS "**** COMMAND bash -c \"${BOOST_LIB_DIR}/bootstrap.sh --prefix=${BOOST_BINARY_DIR} --with-libraries=${BOOST_COMPONENTS}\" WORKING_DIRECTORY ${BOOST_LIB_DIR} RESULT_VARIABLE result OUTPUT_QUIET ****")
@@ -119,71 +149,57 @@ macro(setup_sqlite)
 #    target_sources(${PROJECT_NAME} "${SQLITE_LIB_DIR}/sqlite3.c")
 endmacro()
 
-macro(setup_my_google_test)
-    message(STATUS "-> Try to compile some google stuff")
-    set(GOOGLE_TEST_LIB_DIR "${CMAKE_SOURCE_DIR}/include/googletest")
-    # set(GOOGLE_TEST_BINARY_DIR "${CMAKE_BINARY_DIR}/google-build")
+#macro(setup_my_google_test)
+#    message(STATUS "-> Try to compile some google stuff")
+#    set(GOOGLE_TEST_LIB_DIR "${CMAKE_SOURCE_DIR}/include/googletest")
+#    # set(GOOGLE_TEST_BINARY_DIR "${CMAKE_BINARY_DIR}/google-build")
 
-    # configure_file(${GOOGLE_TEST_LIB_DIR}/CMakeLists.txt ${GOOGLE_TEST_BINARY_DIR}/CMakeLists.txt COPYONLY)
-    message(status "\n** execute_process(COMMAND ${CMAKE_COMMAND} -G \"${CMAKE_GENERATOR}\" ${GOOGLE_TEST_LIB_DIR} RESULT_VARIABLE result WORKING_DIRECTORY ${CMAKE_BINARY_DIR}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${GOOGLE_TEST_LIB_DIR} RESULT_VARIABLE result WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    if(result)
-        message(FATAL_ERROR "CMake step for googletest failed: ${result}")
-    endif()
-    execute_process(COMMAND ${CMAKE_COMMAND} --build . RESULT_VARIABLE result WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    if(result)
-        message(FATAL_ERROR "Build step for googletest failed: ${result}")
-    endif()
+#    # configure_file(${GOOGLE_TEST_LIB_DIR}/CMakeLists.txt ${GOOGLE_TEST_BINARY_DIR}/CMakeLists.txt COPYONLY)
+#    message(status "\n** execute_process(COMMAND ${CMAKE_COMMAND} -G \"${CMAKE_GENERATOR}\" ${GOOGLE_TEST_LIB_DIR} RESULT_VARIABLE result WORKING_DIRECTORY ${CMAKE_BINARY_DIR}")
+#    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${GOOGLE_TEST_LIB_DIR} RESULT_VARIABLE result WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+#    if(result)
+#        message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+#    endif()
+#    execute_process(COMMAND ${CMAKE_COMMAND} --build . RESULT_VARIABLE result WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+#    if(result)
+#        message(FATAL_ERROR "Build step for googletest failed: ${result}")
+#    endif()
 
-    # Prevent overriding the parent project's compiler/linker
-    # settings on Windows
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-
-    include_directories(${GOOGLE_TEST_LIB_DIR}/googletest/include)    # -I compilation command
-    include_directories(${GOOGLE_TEST_LIB_DIR}/googlemock/include)    # -I compilation command
-endmacro()
-
-macro(setup_google_test)
-    # Download and unpack googletest at configure time
-    configure_file(${CMAKE_SOURCE_DIR}/GoogleTest.in ${CMAKE_BINARY_DIR}/googletest-download/CMakeLists.txt)
-    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
-                    RESULT_VARIABLE result
-                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)
-    if(result)
-      message(FATAL_ERROR "CMake step for googletest failed: ${result}")
-    endif()
-    execute_process(COMMAND ${CMAKE_COMMAND} --build .
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
-    if(result)
-      message(FATAL_ERROR "Build step for googletest failed: ${result}")
-    endif()
-
-    # Prevent overriding the parent project's compiler/linker
-    # settings on Windows
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-    # Add googletest directly to our build. This defines
-    # the gtest and gtest_main targets.
-    add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
-                     ${CMAKE_BINARY_DIR}/googletest-build
-                     EXCLUDE_FROM_ALL)
-endmacro()
+#    # Prevent overriding the parent project's compiler/linker
+#    # settings on Windows
+#    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 
+#    include_directories(${GOOGLE_TEST_LIB_DIR}/googletest/include)    # -I compilation command
+#    include_directories(${GOOGLE_TEST_LIB_DIR}/googlemock/include)    # -I compilation command
+#endmacro()
 
-macro(setup_google_test2)
-    # Prevent overriding the parent project's compiler/linker
-    # settings on Windows
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+#macro(setup_google_test)
+#    # Download and unpack googletest at configure time
+#    configure_file(${CMAKE_SOURCE_DIR}/GoogleTest.in ${CMAKE_BINARY_DIR}/googletest-download/CMakeLists.txt)
+#    execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+#                    RESULT_VARIABLE result
+#                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download)
+#    if(result)
+#      message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+#    endif()
+#    execute_process(COMMAND ${CMAKE_COMMAND} --build .
+#      RESULT_VARIABLE result
+#      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
+#    if(result)
+#      message(FATAL_ERROR "Build step for googletest failed: ${result}")
+#    endif()
 
-    # Add googletest directly to our build. This defines
-    # the gtest and gtest_main targets.
-    add_subdirectory("${CMAKE_SOURCE_DIR}/include/googletest-release-1.8.0"
-                     EXCLUDE_FROM_ALL)
-endmacro()
+#    # Prevent overriding the parent project's compiler/linker
+#    # settings on Windows
+#    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
+#    # Add googletest directly to our build. This defines
+#    # the gtest and gtest_main targets.
+#    add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
+#                     ${CMAKE_BINARY_DIR}/googletest-build
+#                     EXCLUDE_FROM_ALL)
+#endmacro()
 
 macro(configure_google_test)
     # see https://github.com/google/googletest/blob/master/googletest/README.md
@@ -223,7 +239,6 @@ macro(configure_google_test)
     endif()
 endmacro()
 
-
 # Configure project
 project(CppSqlLiteDbAdapter)
 
@@ -245,12 +260,6 @@ setup_boost()
 
 # Setup SQLite
 setup_sqlite()
-
-# Setup google test
-#setup_my_google_test()
-#setup_google_test()
-#setup_google_test2()
-
 
 # Include interface
 include_directories(${CMAKE_SOURCE_DIR}/interface)    # -I compilation command
